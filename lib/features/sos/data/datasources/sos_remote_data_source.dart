@@ -85,15 +85,40 @@ class SosRemoteDataSourceImpl implements SosRemoteDataSource {
     // High reliability simulated responder confirmation
     await Future.delayed(const Duration(milliseconds: 600));
 
+    String resolvedAddress =
+        (profile != null && profile.address.trim().isNotEmpty) ? profile.address : '';
+    if (resolvedAddress.isEmpty) {
+      try {
+        final revUri = Uri.parse(
+          'https://nominatim.openstreetmap.org/reverse?lat=$latitude&lon=$longitude&format=json',
+        );
+        final revRes = await _client.get(
+          revUri,
+          headers: {'User-Agent': 'EmergencyAmbulanceSOS/1.0'},
+        ).timeout(const Duration(seconds: 3));
+        if (revRes.statusCode == 200) {
+          final revData = jsonDecode(revRes.body) as Map<String, dynamic>;
+          resolvedAddress = revData['display_name'] as String? ?? '';
+        }
+      } catch (_) {}
+    }
+    if (resolvedAddress.isEmpty) {
+      resolvedAddress = 'GPS: ${latitude.toStringAsFixed(4)}, ${longitude.toStringAsFixed(4)}';
+    }
+
     return SosDispatchModel(
       id: dispatchId,
       timestamp: DateTime.now(),
       userLatitude: latitude,
       userLongitude: longitude,
       hospital: hospital,
-      userName: profile?.name.isNotEmpty == true ? profile!.name : 'Anonymous Citizen',
-      userPhone: profile?.phoneNumber.isNotEmpty == true ? profile!.phoneNumber : 'Live GPS Dispatch',
-      userAddress: profile?.address.isNotEmpty == true ? profile!.address : 'Coordinates: $latitude, $longitude',
+      userName: (profile != null && profile.name.trim().isNotEmpty)
+          ? profile.name
+          : 'Emergency Caller',
+      userPhone: (profile != null && profile.phoneNumber.trim().isNotEmpty)
+          ? profile.phoneNumber
+          : 'Live Device Fix',
+      userAddress: resolvedAddress,
       bloodGroup: profile?.bloodGroup,
       medicalNotes: profile?.medicalNotes,
       etaMinutes: etaMinutes,
