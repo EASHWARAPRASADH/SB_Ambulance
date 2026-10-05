@@ -36,7 +36,7 @@ jobs:
         run: flutter test
 
       - name: Build Web Release
-        run: flutter build web --release --base-href "/SB_Ambulance/"
+        run: flutter build web --release --base-href "/shivabalan-project/"
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
